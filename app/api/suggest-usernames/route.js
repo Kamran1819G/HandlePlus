@@ -14,15 +14,17 @@ export async function GET(request) {
   const model = genAI.getGenerativeModel({ model: 'gemini-pro' })
 
   try {
-    const prompt = `Generate 5 alternative usernames based on "${username}" following these guidelines:
-    1. Maintain the essence or theme of the original username
-    2. Use creative wordplay, puns, or clever combinations
-    3. Incorporate relevant synonyms or related concepts
-    4. Consider adding prefixes or suffixes that enhance the meaning
-    5. Ensure each suggestion is unique and distinct from the others
-    6. Keep the suggestions relatively short and easy to remember
-    7. Avoid using numbers unless they're meaningful to the theme
-    8. Make sure the suggestions are appropriate and not offensive
+    const prompt = `Generate 5 alternative usernames based on "${username}" for various platforms, following these guidelines:
+    1. Create a professional options suitable for various social media platforms (e.g., LinkedIn, Twitter, Instagram).
+    2. Maintain the essence or key elements of the original username.
+    3. Use creative wordplay, puns, or clever combinations that reflect current social media trends.
+    4. Incorporate relevant industry terms, interests, or personality traits if apparent from the original username.
+    5. Ensure each suggestion is unique, memorable, and easy to type.
+    6. Keep the suggestions relatively short (preferably under 15 characters).
+    7. Avoid numbers unless they have a clear purpose or meaning.
+    8. Make sure the suggestions are appropriate and not offensive.
+    9. For professional options, focus on clarity and personal branding.
+    10. For fun options, be creative but still relatable and engaging.
 
     Please provide only the list of 5 usernames, one per line, without any additional text or numbering.`
 
