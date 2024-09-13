@@ -2,54 +2,65 @@ import { NextResponse } from 'next/server'
 import axios from 'axios'
 import { websites } from '@/shared/websitesConfig'
 
-async function checkUsername(website, username) {
+// Helper function to check if a response indicates the username is available
+function isUsernameAvailable(response, website, username) {
+  if (website.checkAvailability) {
+    return website.checkAvailability(response, username)
+  }
+
+  if (response.status === 404) {
+    return true
+  }
+
+  if (response.status === 200) {
+    const contentType = response.headers['content-type']
+    const bodyText = response.data.toString().toLowerCase()
+
+    if (contentType && contentType.includes('text/html')) {
+      if (
+        bodyText.includes('404') ||
+        bodyText.includes('not found') ||
+        bodyText.includes("doesn't exist")
+      ) {
+        return true
+      }
+
+      if (website.unavailableIndicators) {
+        return !website.unavailableIndicators.some((indicator) =>
+          bodyText.includes(indicator.toLowerCase())
+        )
+      }
+    }
+  }
+
+  return false
+}
+
+// Function to check username availability for a single website
+async function checkUsernameForWebsite(website, username) {
   try {
     const url = website.url.replace('{username}', username)
     const response = await axios.get(url, {
       timeout: 5000,
-      validateStatus: function (status) {
-        return true // Allow any status code to be processed
-      },
+      validateStatus: () => true, // Allow any status code
     })
 
-    // Use custom checking logic if provided
-    if (website.checkAvailability) {
-      return website.checkAvailability(response, username)
+    return {
+      name: website.name,
+      available: isUsernameAvailable(response, website, username),
+      url: url,
+      logo: website.logo,
+      status: response.status,
     }
-
-    // Default checking logic
-    if (response.status === 404) {
-      return true // Username is likely available
-    } else if (response.status < 500) {
-      if (response.status === 200) {
-        const contentType = response.headers['content-type']
-        const bodyText = response.data.toString().toLowerCase()
-
-        if (contentType && contentType.includes('text/html')) {
-          if (
-            bodyText.includes('404') ||
-            bodyText.includes('not found') ||
-            bodyText.includes("doesn't exists")
-          ) {
-            return true // Username is likely available
-          }
-
-          if (website.unavailableIndicators) {
-            for (const indicator of website.unavailableIndicators) {
-              if (bodyText.includes(indicator.toLowerCase())) {
-                return false // Username is likely taken
-              }
-            }
-          }
-        }
-      }
-      return false // By default, assume the username is taken if we can't determine otherwise
-    }
-
-    return false // By default, assume the username is taken if we can't determine otherwise
   } catch (error) {
     console.error(`Error checking ${website.name}:`, error.message)
-    return null // Unable to determine availability
+    return {
+      name: website.name,
+      available: null,
+      url: website.url.replace('{username}', username),
+      logo: website.logo,
+      status: error.response?.status || 'Error',
+    }
   }
 }
 
@@ -63,18 +74,11 @@ export async function GET(request) {
 
   try {
     const results = await Promise.all(
-      websites.map((website) => checkUsername(website, username))
+      websites.map((website) => checkUsernameForWebsite(website, username))
     )
 
     const availability = Object.fromEntries(
-      websites.map((website, index) => [
-        website.name,
-        {
-          available: results[index] === true,
-          url: website.url.replace('{username}', username),
-          logo: website.logo,
-        },
-      ])
+      results.map((result) => [result.name, result])
     )
 
     return NextResponse.json({ results: availability })
